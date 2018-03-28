@@ -6,7 +6,8 @@
 - [Route](#route)
 - [ObjectMeta](#objectmeta)
 - [Service](#service)
-	- [ServiceSpec](#servicespec)
+- [ServiceSpec](#servicespec)
+- [ServicePort](#serviceport)
 - [DeploymentConfig](#deploymentconfig)
 - [BuildConfig](#buildconfig)
 
@@ -22,6 +23,7 @@
 - Boolean 布尔值类型
 - Object 纯对象类型，通常用于存储键值对
 - 对象类型，该对象定义在本文的其他位置
+- 数组类型，若类型被[]包围，代表这是数组
 
 推荐使用YAML来编写一个对象的定义，请看[这里](http://ansible-tran.readthedocs.io/en/latest/docs/YAMLSyntax.html)，了解YAML的语法。
 
@@ -45,10 +47,35 @@
 |-|-|-|
 |kind   |String   |值为Service   |
 |apiVersion   |String   |值为v1   |
-|metadata   |[ObjectMeta](objectmeta)   |元数据   |
+|metadata   |[ObjectMeta](#objectmeta)   |元数据   |
 |spec   |[ServiceSpec](#servicespec)   |服务的描述对象   |
 
-### ServiceSpec
+## ServiceSpec
+
+|属性名|类型|说明|
+|-|-|-|
+|ports   |[[ServicePort](#serviceport)]   |端口列表。本服务暴露的端口列表   |
+|selector   |Object   |选择器。把本服务的数据发送给符合这个选择器的容器。如果为空，该服务会被认为有一个外部的进程在管理本服务的终端，Kubernetes不会修改本选择器。本选择器应用于类型为ClusterIP，NodePort或LoadBalancer的服务。若类型为ExternalName，则本属性会被忽略。   |
+|clusterIP   |String   |本服务在集群内的IP地址，通常被随机设置。如果指定了本IP，并且该IP没有被其他人使用，本IP会被使用，否则本服务的创建会失败。无法更新本属性。有效值有不设置，空字符串，与有效IP地址。不设置时，指定本服务为无终端服务（headless service），不需要进行代理。只在服务类型为ClusterIP，NodePort或LoadBalancer时有效。   |
+|type   |String   |服务类型。服务类型指定了如何暴露本服务。默认为ClusterIP。有效的选项有ExternalName, clusterIP, NodePort和LoadBalancer。<br/>ExternalName：把服务映射到指定的外部域名。<br/>ClusterIP：分配一个集群内部的IP地址，提供到终端的负载均衡服务，终端由selector属性所选择，或是构建一个Endpoints对象来指定。如果clusterIP属性为空，则不会有任何的集群内IP分配给本服务，这些终端只会被暴露为一个终端的集合。<br/>NodePort：基于ClusterIP上构建的，并在所有的节点上分配一个端口，路由到该集群IP。<br/>LoadBalancer：基于NodePort构建的，创建一个外部的负载均衡器，并路由该集群IP。   |
+|externalIPs   |[String]   |外部IP。这个服务也会接受来到外部IP列表内的IP的请求。这些IP不由Kubernetes管理。用户负责确保请求通过这个IP到达一个节点。举个例子，比如是外部的负载均衡服务的IP。   |
+|sessionAffinity   |String   |值可以为ClientIP或None，默认为None。为ClientIP时，启用基于用户IP的粘滞会话。   |
+|loadBalancerIP   |String   |只用于LoadBalancer类型的服务。使用这个IP来创建负载均衡器。这个功能依赖于底层的云服务提供商，要求他们支持使用一个IP创建负载均衡器。若不支持，则会被忽略。   |
+|loadBalancerSourceRanges   |[String]   |若设置了本属性，并且云服务提供商支持，那么这会限制云服务提供商的负载均衡器只接受来自这些IP的请求。若不支持，则会被忽略。   |
+|externalName   |String  |kubedns或相同功能的程序会返回一个包含本外部名的CNAME的记录，而不会进行代理。必须是一个有效的DNS域名，本服务类型必须为ExternalName   |
+|externalTrafficPolicy   |String   |本属性指定是否这个服务需要将外部的请求路由到节点或者是整个集群的范围。若值为Local，将会在同一个节点上服务已经提供过服务的客户IP，而不会转发到其他节点或服务，但是可能会造成负载的集中。若为Cluster，则将请求均匀的分布到节点上，虽然可能造成一个客户的请求会发给多个节点处理，但是整体负载比较均衡。   |
+|healthCheckNodePort   |Number   |指定本服务的健康检查的端口，如果没有设置，则会被后台服务API使用的节点端口。如果指定了将会使用该端口。只会在类型为LoadBalancer并且ExternalTrafficPolicy设为Local时生效。   |
+
+
+## ServicePort
+
+|属性名|类型|说明|
+|-|-|-|
+|name   |String   |本服务中的名字，必须是一个DNS_LABEL。一个服务中的所有端口必须有唯一的名字。若只有一个服务端口，则这个名字可以省略。这映射到EndpointPort对象的名称属性。   |
+|protocol   |String   |本端口的IP协议，支持TCP和UDP   |
+|port   |Number   |本服务暴露的物理端口   |
+|targetPort   |String   |数字，或者是端口的名字，用于访问本服务的容器。数字必须在1-65535的范围内。名字必须时一个IANA_SVC_NAME。如果这是字符串，会被用来查找目标容器的端口。如果没有设置此属性，则会使用port属性。若ClusterIP=None，本属性会被忽略。如果本属性的值与port相同，应该省略本属性。   |
+|nodePort   |Number   |当服务的类型为NodePort或LoadBalaner时，每个节点的这个端口都会被本服务使用。通常时系统自动设置的。如果指定了本属性，并且这些端口没有在用，服务将会成功创建，否则会失败。默认会自动分配一个端口。   |
 
 ## DeploymentConfig
 
